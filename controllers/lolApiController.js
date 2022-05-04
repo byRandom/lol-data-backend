@@ -1,97 +1,97 @@
-'use strict'
-// const TeemoJS = require('teemojs');
-// let api = TeemoJS('RGAPI-edc4bc31-c7dd-48b5-bfb9-013adc22702d');
-  let {LolApi, Constants } =  require('twisted')
+"use strict";
+let axios = require("axios")
 
-const api = new LolApi({
-    /**
-    * If api response is 429 (rate limits) try reattempt after needed time (default true)
-    */
-   rateLimitRetry: true,
-   /**
-    * Number of time to retry after rate limit response (default 1)
-    */
-   rateLimitRetryAttempts: 1,
-   /**
-    * Concurrency calls to riot (default infinity)
-    * Concurrency per method (example: summoner api, match api, etc)
-    */
-   concurrency: undefined,
-   /**
-    * Riot games api key
-    */
-   key: 'RGAPI-6a655b30-bfc8-4e4f-b5cd-930269e1b9ad',
-   /**
-    * Debug methods
-    */
-   debug: {
-     /**
-      * Log methods execution time (default false)
-      */
-     logTime: false,
-     /**
-      * Log urls (default false)
-      */
-     logUrls: false,
-     /**
-      * Log when is waiting for rate limits (default false)
-      */
-   }
- })
+let apiKey = "RGAPI-6a655b30-bfc8-4e4f-b5cd-930269e1b9ad";
 
 
+const getSummoner = async (req, res) => {
+    let name = req.params.name;
+    let region = req.body.region;
+    let url = `https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${name}?api_key=${apiKey}`;
 
-let controller = {
-    summoner: async function(req, res){
-        let name = req.params.name
-        let region = req.body.region
-        if(region){console.log(region)}
-        let data
-        if(name == null) return res.status(404).send({message: 'El summoner no existe'})
-        try{
-            
-            switch(region){
-                case 'EU_WEST':
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.EU_WEST)
-                    break
-                case 'EU_EAST':
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.EU_EAST)
-                    break
-                case 'KOREA':
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.KOREA)
-                    break
-                case 'AMERICA_NORT':
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.AMERICA_NORTH)
-                    return
-                case 'JAPAN':
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.JAPAN)
-                    break
-                default:
-                    data = await api.Summoner.getByName(`${req.params.name}`, Constants.Regions.EU_WEST)
-                    break
-                    
-                }      
+    if (region) {
+        console.log(region);
+    }
+    if (name == null)
+        return res.status(404).send({ message: "El summoner no existe" });
 
-            
-            console.log(data.response)
-            return res.status(200).send({
-            id: data.response.id,
-            accountId: data.response.accountId,
-            puuid: data.response.puuid,
-            name: data.response.name,
-            profileIconId: data.response.profileIconId,
-            revisionDate: data.response.revisionDate,
-            summonerLevel: data.response.summonerLevel,
-            imageUrl: `http://ddragon.leagueoflegends.com/cdn/12.7.1/img/profileicon/${data.response.profileIconId}.png`
-        })
-        }catch(err){
-            console.log(err)
-            return res.status(404).send({message: 'Summoner not found'})
-        }
-        
-        
-    },
+        let data = await axios.request({
+            method:'GET',
+            url: url,
+        }).then(response => response.data)
+        console.log(data)
+
+    let returnData = {
+        region: region,
+        id: data.id,
+        accountId: data.accountId,
+        puuid: data.puuid,
+        name: data.name,
+        profileIconId: data.profileIconId,
+        revisionDate: data.revisionDate,
+        summonerLevel: data.summonerLevel,
+        imageUrl: `http://ddragon.leagueoflegends.com/cdn/12.7.1/img/profileicon/${data.profileIconId}.png`,
+    };
+    console.log(returnData);
+    return returnData;
+    // }catch(err){
+    //     console.log(err)
+    //     return {message: 'Summoner not found'}
+    // }
+};
+
+const getMatchList = async (data, start = 0, count = 20) => {
+    let puuid = data.puuid
+    let url = `https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}&api_key=${apiKey}`
+    let matchData = await axios.request({
+        method:'GET',
+        url: url,
+    }).then(response => response.data)
+    console.log(matchData)
+    return matchData;
+};
+
+
+const getMatchDetails = async (matchId) => {
+    let url = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchId}?api_key=${apiKey}`
+    let matchDetails = await axios.request({
+        method: "GET",
+        url: url
+    }).then(response => response.data).catch(error => console.log(error))
+    return matchDetails
 
 }
 
-module.exports = controller
+let controller = {
+    summoner: async function (req, res) {
+        try {
+            return res.status(200).send(await getSummoner(req, res));
+        } catch (err) {
+            console.log(err)
+            return res.status(404).send({ message: "Summoner not found" });
+        }
+    },
+
+    matchList: async function (req, res) {
+        try {
+            let data = await getSummoner(req, res);
+            let matchListData = await getMatchList(data)
+            return res.status(200).send({ matchListData });
+        } catch (err) {
+            console.log(err);
+            return res.status(404).send({ message: "Summoner not found" });
+        }
+    },
+    matchDetails: async function (req, res) {
+        try {
+            let matchId = req.params.matchId
+            let matchDetails = await getMatchDetails(matchId)
+            return res.status(200).send({ matchDetails });
+        } catch (err) {
+            console.log(err);
+            return res.status(404).send({ message: "Match not found" });
+        }
+    },
+};
+
+module.exports = controller;

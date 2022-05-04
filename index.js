@@ -1,10 +1,8 @@
-const express = require('express')
-const path = require('path')
-const PORT = process.env.PORT || 5000
+'use strict'
+let app = require('./app')
 
-express()
-  .use(express.static(path.join(__dirname, 'public')))
-  .set('views', path.join(__dirname, 'views'))
-  .set('view engine', 'ejs')
-  .get('/', (req, res) => res.render('pages/index'))
-  .listen(PORT, () => console.log(`Listening on ${ PORT }`))
+let port = 3700
+
+app.listen(port, ()=>{
+    console.log('Servidor corriendo correctamente en la url 127.0.0.1:3700')
+})

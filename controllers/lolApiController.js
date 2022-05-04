@@ -30,7 +30,7 @@ const getSummoner = async (req, res) => {
         profileIconId: data.profileIconId,
         revisionDate: data.revisionDate,
         summonerLevel: data.summonerLevel,
-        imageUrl: `https://ddragon.leagueoflegends.com/cdn/12.7.1/img/profileicon/${data.profileIconId}.png`,
+        imageUrl: `https://ddragon.leagueoflegends.com/cdn/12.8.1/img/profileicon/${data.profileIconId}.png`,
     };
     console.log(returnData);
     return returnData;

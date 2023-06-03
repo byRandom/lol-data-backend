@@ -74,78 +74,103 @@ const getMatchDetails = async (matchId) => {
 
 //This function will return the summoner masteries and will select the top 3 mastery champion and return the champion name and the mastery points in a json
 const getSummonerMasteries = async (data) => {
-    let summonerId = data.id
-    let url = `https://euw1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/${summonerId}?api_key=${apiKey}`
-    let summonerMasteries = await axios.request({
-        method: "GET",
-        url: url
-    }).then(response => response.data).catch(error => console.log(error))
-    let getChampionName = async (championId) => {
-        let gameVersion = await getGameVersion()
-        let url = `http://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/en_US/champion.json`
-        let championData = await axios.request({
-            method: "GET",
-            url: url
-        }).then(response => response.data).catch(error => console.log(error))
-        let championName = Object.keys(championData.data).find(key => championData.data[key].key == championId)
-        return championName
+    try {
+      const summonerId = data.id;
+      const url = `https://euw1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/${summonerId}?api_key=${apiKey}`;
+      const response = await axios.get(url);
+      const summonerMasteries = response.data;
+  
+      const getChampionName = async (championId) => {
+        try {
+          const gameVersion = await getGameVersion();
+          const url = `http://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/en_US/champion.json`;
+          const response = await axios.get(url);
+          const championData = response.data;
+          const championName = Object.keys(championData.data).find(
+            (key) => championData.data[key].key == championId
+          );
+          return championName;
+        } catch (error) {
+          console.log(error);
+          return null;
+        }
+      };
+  
+      const top3Masteries = summonerMasteries.slice(0, 3);
+  
+      const championMasteries = await Promise.all(
+        top3Masteries.map(async (mastery) => {
+          const championId = mastery.championId;
+          const championMasteryPoints = mastery.championPoints;
+          const championName = await getChampionName(championId);
+          return { championName, championMasteryPoints };
+        })
+      );
+  
+      return championMasteries;
+    } catch (error) {
+      console.log(error);
+      return null;
     }
-
-    let top3Masteries = []
-    for (let i = 0; i < 3; i++) {
-        top3Masteries.push(summonerMasteries[i])
-    }
-    let championMasteries = []
-    for (let i = 0; i < 3; i++) {
-        let championId = top3Masteries[i].championId
-        let championMasteryPoints = top3Masteries[i].championPoints
-        let championName = await getChampionName(championId)
-        championMasteries.push({ championName, championMasteryPoints })
-    }
-    return championMasteries
-}
-
+  };
+  
 //this function will return the winrate on the last 20 games for this summoner
 const getSummonerWinrate = async (data) => {
-    let summonerId = data.id
-    let url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`
-    let summonerLeague = await axios.request({
-        method: "GET",
-        url: url
-    }).then(response => response.data).catch(error => console.log(error))
-    let summonerWinrate = summonerLeague[0].wins / (summonerLeague[0].wins + summonerLeague[0].losses)
-    return summonerWinrate
-}
+  try {
+    const summonerId = data.id;
+    const url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`;
+    const response = await axios.get(url);
+    const summonerLeague = response.data;
+    const wins = summonerLeague[0].wins;
+    const losses = summonerLeague[0].losses;
+    const summonerWinrate = wins / (wins + losses);
+    return summonerWinrate;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+
 
 
 //this function will return the summoner MMR
 const getSummonerMMR = async (data) => {
-    let summonerId = data.id
-    let url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`
-    let summonerLeague = await axios.request({
-        method: "GET",
-        url: url
-    }).then(response => response.data).catch(error => console.log(error))
-    let summonerMMR = summonerLeague[0].leaguePoints
-    return summonerMMR
-}
+    try {
+      const summonerId = data.id;
+      const url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`;
+      const response = await axios.get(url);
+      const summonerLeague = response.data;
+      const summonerMMR = summonerLeague[0].leaguePoints;
+      return summonerMMR;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  };
+  
 
 
 //This function will save every match data into the database getting it from de API
-let saveMatchDetails = async (matchId) => {
-    let matchDetailsDB = await getMatchDetails(matchId)
-    //await 1 second to not get rate limited
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    let matchDetailsData = new matchDetails()
-    matchDetailsData.metadata = matchDetailsDB.metadata
-    matchDetailsData.info = matchDetailsDB.info
-    matchDetailsData.matchId = matchDetailsDB.metadata.matchId
-    matchDetailsData.save((err, matchDetailsStored) => {
-        if (err) return { message: 'Error al guardar el matchDetails en la base de datos' }
-        if (!matchDetailsStored) return { message: 'No se ha podido guardar el matchDetails en la base de datos' }
-        return { matchDetails: matchDetailsStored }
-    })
-}
+const saveMatchDetails = async (matchId) => {
+    try {
+      const matchDetailsDB = await getMatchDetails(matchId);
+      // Esperar 1 segundo para evitar limitaciones de velocidad
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const matchDetailsData = new matchDetails({
+        metadata: matchDetailsDB.metadata,
+        info: matchDetailsDB.info,
+        matchId: matchDetailsDB.metadata.matchId
+      });
+      const matchDetailsStored = await matchDetailsData.save();
+      if (!matchDetailsStored) {
+        return { message: 'No se ha podido guardar el matchDetails en la base de datos' };
+      }
+      return { matchDetails: matchDetailsStored };
+    } catch (error) {
+      return { message: 'Error al guardar el matchDetails en la base de datos', error };
+    }
+  };
+  
 //This function will return every match data from the last games from the database
 const getMatchDetailsFromDatabase = async (matchId) => {
     try {

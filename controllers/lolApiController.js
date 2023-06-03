@@ -2,8 +2,6 @@
 let axios = require("axios")
 let apiKey = "RGAPI-12216380-e19e-4765-9b1d-be1e4d2b9172";
 //import models
-let SummonerData = require("../models/summonerDataModel");
-
 let matchDetails = require("../models/matchDetailsModel");
 // const { get } = require("../app");
 
@@ -140,8 +138,7 @@ const getSummonerMMR = async (data) => {
       const url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}?api_key=${apiKey}`;
       const response = await axios.get(url);
       const summonerLeague = response.data;
-      const summonerMMR = summonerLeague[0].leaguePoints;
-      return summonerMMR;
+      return summonerLeague;
     } catch (error) {
       console.log(error);
       return null;
@@ -206,7 +203,17 @@ const checkMatchDetailsInDatabase = async (matchId) => {
 let controller = {
     summoner: async function (req, res) {
         try {
-            return res.status(200).send(await getSummoner(req, res));
+            let summonerData = await getSummoner(req, res);
+            console.log(summonerData)
+            let winrate = await getSummonerWinrate(summonerData)
+            winrate = Math.round(winrate * 100)
+            summonerData = {...summonerData, winrate: winrate}
+            let leagueData = await getSummonerMMR(summonerData)
+            leagueData = leagueData[0]
+            summonerData = {...summonerData, league: leagueData.tier, rank: leagueData.rank, leaguePoints: leagueData.leaguePoints, wins: leagueData.wins, losses: leagueData.losses}
+            console.log(summonerData)
+            
+            return res.status(200).send(summonerData);
         } catch (err) {
             console.log(err)
             return res.status(404).send({ message: "Summoner not found" });

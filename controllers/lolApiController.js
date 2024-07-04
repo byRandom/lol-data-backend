@@ -1,6 +1,6 @@
 "use strict";
 let axios = require("axios");
-let apiKey = "RGAPI-12216380-e19e-4765-9b1d-be1e4d2b9172";
+let apiKey = "";
 //import models
 let matchDetails = require("../models/matchDetailsModel");
 // const { get } = require("../app");
